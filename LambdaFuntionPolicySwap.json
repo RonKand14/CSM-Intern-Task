@@ -1,0 +1,45 @@
+from datetime import datetime
+import boto3
+import botocore
+
+def lambda_handler(event, context):
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket('bucketname')
+    exists = True
+
+    try:
+        s3.meta.client.head_bucket(Bucket='bucketname')
+    except botocore.exceptions.ClientError as e:
+        # If a client error is thrown, then check that it was a 404 error.
+        # If it was a 404 error, then the bucket does not exist.
+        error_code = int(e.response['Error']['Code'])
+        if error_code == 404:
+            exists = False
+
+# Create IAM client & resource
+client = boto3.client('iam')
+resource = boto3.resource('iam')
+
+
+#State check
+role = resource.Role('Engineering')
+response = client.list_entities_for_policy(PolicyArn='arn:aws:iam::aws:policy/job-function/Billing',EntityFilter='Role')
+x = ((((response.get('PolicyRoles'))[0]).get('RoleName')))
+
+#Changing policies
+if x != 'Engineering':
+    print('hi')
+    role = resource.Role('Engineering')
+    role.attach_policy(PolicyArn='arn:aws:iam::aws:policy/job-function/Billing')
+    role.detach_policy(PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')
+    role = resource.Role('Finance')
+    role.attach_policy(PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')
+    role.detach_policy(PolicyArn='arn:aws:iam::aws:policy/job-function/Billing')
+else:
+    print('bye')
+    role = resource.Role('Engineering')
+    role.attach_policy(PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')
+    role.detach_policy(PolicyArn='arn:aws:iam::aws:policy/job-function/Billing')
+    role = resource.Role('Finance')
+    role.attach_policy(PolicyArn='arn:aws:iam::aws:policy/job-function/Billing')
+    role.detach_policy(PolicyArn='arn:aws:iam::aws:policy/AdministratorAccess')
